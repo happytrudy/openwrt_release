@@ -178,12 +178,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           KEEP=2
-          gh release list --limit 100 --json tagName,publishedAt \
+          MODEL="${{ inputs.model }}"
+          CURRENT="${{ env.BUILD_DATE }}_${{ inputs.model }}"
+
+          gh release list --limit 200 --json tagName,publishedAt \
             | jq -r '.[] | "\(.publishedAt) \(.tagName)"' \
+            | grep "_${MODEL}$" \
+            | grep -v "$CURRENT" \
             | sort -r \
             | awk "NR>$KEEP {print \$2}" \
             | while read tag; do
-                echo "Delete old release $tag"
+                echo "Deleting old release $tag"
                 gh release delete "$tag" --yes --cleanup-tag
               done
 
