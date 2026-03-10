@@ -179,16 +179,13 @@ jobs:
         run: |
           KEEP=2
           MODEL="${{ inputs.model }}"
-          CURRENT="${{ env.BUILD_DATE }}_${{ inputs.model }}"
 
           gh release list --limit 200 --json tagName,publishedAt \
-            | jq -r '.[] | "\(.publishedAt) \(.tagName)"' \
-            | grep "_${MODEL}$" \
-            | grep -v "$CURRENT" \
+            | jq -r ".[] | select(.tagName | startswith(\"$MODEL\")) | \"\(.publishedAt) \(.tagName)\"" \
             | sort -r \
             | awk "NR>$KEEP {print \$2}" \
             | while read tag; do
-                echo "Deleting old release $tag"
+                echo "Deleting $tag"
                 gh release delete "$tag" --yes --cleanup-tag
               done
 
