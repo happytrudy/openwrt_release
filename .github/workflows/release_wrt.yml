@@ -145,6 +145,12 @@ jobs:
       - name: Prepare Release Body
         if: success()
         run: |
+          PLUGINS=$(grep -oP "luci-app(-[a-zA-Z0-9]{1,}){1,}" ./firmware/*.manifest \
+            | awk -F":" '{print $NF}' \
+            | sort -u \
+            | paste - - - - \
+            | awk '{printf "- %-25s %-25s %-25s %-25s\n",$1,$2,$3,$4}')
+
           cat > release_body.txt <<EOF
           🚀 ImmortalWrt Cloud Build
 
@@ -155,7 +161,7 @@ jobs:
           - LAN IP: 10.0.0.1
 
           🧩 Installed Plugins
-          $(grep -oP "luci-app(-[a-zA-Z0-9]{1,}){1,}" ./firmware/*.manifest | awk -F":" '{print "- " $NF}')
+          $PLUGINS
           EOF
 
 #------------------------------------------------
