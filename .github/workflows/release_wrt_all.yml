@@ -1,5 +1,5 @@
 # .github/workflows/release_wrt_all.yml
-name: Release WRT - All Devices
+name: Release WRT - All
 run-name: Release All - ${{ github.run_number }}
 
 on:
