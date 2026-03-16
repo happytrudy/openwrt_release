@@ -46,7 +46,7 @@ jobs:
 # 拉代码
 #------------------------------------------------
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
 #------------------------------------------------
 # 脚本权限
@@ -115,7 +115,7 @@ jobs:
 #------------------------------------------------
       - name: Upload Build Log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: build-log-${{ inputs.model }}
           path: build.log
@@ -134,7 +134,7 @@ jobs:
 #------------------------------------------------
       - name: Upload Firmware Artifact
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: firmware-${{ inputs.model }}
           path: ./firmware/*.*
