@@ -107,7 +107,7 @@ jobs:
 
       # 清理旧 Cache
       - name: Cleanup Cache
-        if: always()
+        if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -150,7 +150,7 @@ jobs:
 
       # 发布 Release
       - name: Release Firmware
-        if: always()
+        if: success()
         uses: softprops/action-gh-release@v2.5.0
         with:
           tag_name: ${{ inputs.model }}_${{ env.BUILD_DATE }}
