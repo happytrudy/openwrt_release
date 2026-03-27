@@ -34,6 +34,7 @@ source "$SCRIPT_DIR/modules/feeds.sh"
 source "$SCRIPT_DIR/modules/packages.sh"
 source "$SCRIPT_DIR/modules/system.sh"
 source "$SCRIPT_DIR/modules/cups.sh"
+source "$SCRIPT_DIR/modules/docker.sh"
 
 main() {
     clone_repo
@@ -88,6 +89,7 @@ main() {
     fix_kconfig_recursive_dependency
     fix_cups_libcups_avahi_depends
     install_feeds
+    update_docker_stack
     fix_easytier_lua
     update_adguardhome
     update_script_priority
@@ -97,10 +99,6 @@ main() {
     fix_quectel_cm
     install_pbr_cmcc
     fix_pbr_ip_forward
-    update_package "runc" "releases" "v1.3.3"
-    update_package "containerd" "releases" "v1.7.28"
-    update_package "docker" "tags" "v28.5.2"
-    update_package "dockerd" "releases" "v28.5.2"
     # apply_hash_fixes
 }
 
