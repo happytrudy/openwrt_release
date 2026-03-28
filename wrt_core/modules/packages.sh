@@ -163,17 +163,6 @@ add_timecontrol() {
     fi
 }
 
-# add_gecoosac() {
-#     local gecoosac_dir="$BUILD_DIR/package/openwrt-gecoosac"
-#     local repo_url="https://github.com/lwb1978/openwrt-gecoosac.git"
-#     rm -rf "$gecoosac_dir" 2>/dev/null
-#     echo "正在添加 openwrt-gecoosac..."
-#     if ! git clone --depth 1 "$repo_url" "$gecoosac_dir"; then
-#         echo "错误：从 $repo_url 克隆 openwrt-gecoosac 仓库失败" >&2
-#         exit 1
-#     fi
-# }
-
 update_adguardhome() {
     local adguardhome_dir="$BUILD_DIR/package/feeds/small8/luci-app-adguardhome"
     local repo_url="https://github.com/ZqinKing/luci-app-adguardhome.git"
@@ -340,6 +329,7 @@ _sync_luci_lib_docker() {
 update_dockerman() {
     local path="$BUILD_DIR/feeds/luci/applications/luci-app-dockerman"
     local repo_url="https://github.com/lisaac/luci-app-dockerman.git"
+
     if [ -d "$path" ]; then
         echo "正在更新 dockerman..."
         _sync_luci_lib_docker || return
@@ -363,9 +353,14 @@ update_dockerman() {
         \rm -rf dockerman
         cd "$BUILD_DIR"
 
+        if declare -F docker_stack_sync_dockerman_nftables_compat >/dev/null 2>&1; then
+            docker_stack_sync_dockerman_nftables_compat "$BUILD_DIR" "0" || return 1
+        fi
+
         echo "dockerman 更新完成"
     fi
 }
+
 add_quickfile() {
     local repo_url="https://github.com/sbwml/luci-app-quickfile.git"
     local target_dir="$BUILD_DIR/package/emortal/quickfile"
