@@ -71,9 +71,9 @@ qihoo_360v6_wifi_cfg() {
 }
 
 linksys_mx4x00_wifi_cfg() {
-	configure_wifi 0 1 EHT20 22 'Linksys_MX4X00' '12345678'
-	configure_wifi 1 149 EHT80 21 'Linksys_MX4X00_5G1' '12345678'
-	configure_wifi 2 44 EHT80 21 'Linksys_MX4X00_5G2' '12345678'
+	configure_wifi 0 1 HE20 22 'Linksys_MX4X00' '12345678'
+	configure_wifi 1 149 HE80 21 'Linksys_MX4X00_5G1' '12345678'
+	configure_wifi 2 44 HE80 21 'Linksys_MX4X00_5G2' '12345678'
 }
 
 gemtek_w1701k_wifi_cfg() {
@@ -84,8 +84,8 @@ gemtek_w1701k_wifi_cfg() {
 }
 
 link_nn6000_wifi_cfg() {
-    configure_wifi 0 149 EHT80 19 'Link_NN6000_5G' '12345678'
-	configure_wifi 1 1 EHT20 19 'Link_NN6000' '12345678'
+    configure_wifi 0 149 HE80 19 'Link_NN6000_5G' '12345678'
+	configure_wifi 1 1 HT20 19 'Link_NN6000' '12345678'
 }
 
 case "${board_name}" in
