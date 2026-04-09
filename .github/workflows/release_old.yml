@@ -1,4 +1,4 @@
-name: Release WRT
+name: Release old
 run-name: Release - ${{ inputs.model }}
 
 on:
