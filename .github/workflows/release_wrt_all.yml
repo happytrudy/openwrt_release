@@ -1,4 +1,4 @@
-name: Release Wrt - All Models
+name: Release Wrt All
 
 on:
   workflow_dispatch:
