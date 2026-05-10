@@ -96,6 +96,7 @@ main() {
     docker_stack_sync_nftables_compat "$BUILD_DIR" "0"
     fix_cups_libcups_avahi_depends
     fix_easytier_lua
+    fix_netfilter_kmod_clash
     update_adguardhome
     update_script_priority
     update_geoip
