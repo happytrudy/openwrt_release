@@ -17,11 +17,6 @@ remove_unwanted_packages() {
     local packages_utils=(
         "cups"
     )
-    local small8_packages=(
-        "ppp" "firewall" "dae" "daed" "daed-next" "libnftnl" "nftables" "dnsmasq" "luci-app-alist"
-        "alist" "opkg" "smartdns" "luci-app-smartdns" "easytier"
-    )
-
     for pkg in "${luci_packages[@]}"; do
         if [[ -d ./feeds/luci/applications/$pkg ]]; then
             \rm -rf ./feeds/luci/applications/$pkg
@@ -43,12 +38,6 @@ remove_unwanted_packages() {
         fi
     done
 
-    for pkg in "${small8_packages[@]}"; do
-        if [[ -d ./feeds/small8/$pkg ]]; then
-            \rm -rf ./feeds/small8/$pkg
-        fi
-    done
-
     if [[ -d ./package/istore ]]; then
         \rm -rf ./package/istore
     fi
@@ -56,6 +45,22 @@ remove_unwanted_packages() {
     if [ -d "$BUILD_DIR/target/linux/qualcommax/base-files/etc/uci-defaults" ]; then
         find "$BUILD_DIR/target/linux/qualcommax/base-files/etc/uci-defaults/" -type f -name "99*.sh" -exec rm -f {} +
     fi
+}
+
+get_custom_feed_name() {
+    printf '%s\n' "custom_feed"
+}
+
+get_custom_feed_source_dir() {
+    printf '%s\n' "$BUILD_DIR/$(get_custom_feed_name)"
+}
+
+get_custom_feed_worktree_dir() {
+    printf '%s\n' "$BUILD_DIR/feeds/$(get_custom_feed_name)"
+}
+
+get_custom_feed_package_dir() {
+    printf '%s\n' "$BUILD_DIR/package/feeds/$(get_custom_feed_name)"
 }
 
 update_golang() {
@@ -69,99 +74,187 @@ update_golang() {
     fi
 }
 
-install_small8() {
-    local repo_url="https://github.com/kenzok8/jell.git"
-    local feed_name="small8"
+sync_sparse_packages_to_feed_dir() {
+    local repo_url="$1"
+    local repo_branch="$2"
+    local target_dir="$3"
+    local repo_label="$4"
+    shift 4
 
-    # 将稀疏克隆下来的包放到一个本地自定义 feed 目录中
-    local custom_feed_dir="$PWD/custom_feeds/$feed_name"
+    local packages=("$@")
     local tmp_dir
+    local missing_packages=()
+    local clone_args=(clone --depth 1 --filter=blob:none --sparse)
+    local pkg
+
     tmp_dir=$(mktemp -d)
 
-    # 1. 集中管理你要的包名
-    local packages=(
+    if [ -n "$repo_branch" ]; then
+        clone_args+=(-b "$repo_branch")
+    fi
+
+    clone_args+=("$repo_url" "$tmp_dir")
+
+    echo "正在从 $repo_label 稀疏同步指定目录..."
+    if ! git "${clone_args[@]}"; then
+        echo "错误：从 $repo_url 拉取仓库骨架失败" >&2
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    if ! git -C "$tmp_dir" sparse-checkout set "${packages[@]}"; then
+        echo "错误：配置 $repo_label 稀疏检出目录失败" >&2
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    for pkg in "${packages[@]}"; do
+        if [ -d "$tmp_dir/$pkg" ]; then
+            rm -rf "$target_dir/$pkg"
+            mv "$tmp_dir/$pkg" "$target_dir/"
+        else
+            missing_packages+=("$pkg")
+        fi
+    done
+
+    rm -rf "$tmp_dir"
+
+    if [ ${#missing_packages[@]} -ne 0 ]; then
+        printf '错误：%s 仓库缺少以下必要目录：\n' "$repo_label" >&2
+        printf '  - %s\n' "${missing_packages[@]}" >&2
+        return 1
+    fi
+}
+
+register_local_feed_source() {
+    local custom_feed_dir="$1"
+    local feeds_path="$2"
+    local feed_name
+    feed_name=$(get_custom_feed_name)
+
+    sed -i "/[[:space:]]$feed_name[[:space:]]/d" "$feeds_path"
+    [ -z "$(tail -c 1 "$feeds_path")" ] || echo "" >>"$feeds_path"
+    echo "src-link $feed_name $custom_feed_dir" >>"$feeds_path"
+    echo "已将 $feed_name 作为本地源 (src-link) 添加到 $feeds_path"
+}
+
+install_custom_feed() {
+    local feeds_path
+    local fullconenat_nft_dir="$BUILD_DIR/package/network/utils/fullconenat-nft"
+    local fullconenat_dir="$BUILD_DIR/package/network/utils/fullconenat"
+    local custom_feed_dir
+    local custom_feed_worktree_dir
+    local custom_feed_name
+
+    local base_custom_feed_packages=(
         xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
         naiveproxy shadowsocks-rust sing-box v2ray-core v2ray-geodata geoview v2ray-plugin \
         tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
-        v2dat mosdns luci-app-mosdns adguardhome luci-app-adguardhome ddns-go \
+        v2dat adguardhome luci-app-adguardhome ddns-go \
         luci-app-ddns-go taskd luci-lib-xterm luci-lib-taskd luci-app-store quickstart \
         luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest netdata luci-app-netdata \
         lucky luci-app-lucky luci-app-openclash luci-app-homeproxy luci-app-amlogic \
         oaf open-app-filter luci-app-oaf easytier luci-app-easytier \
         msd_lite luci-app-msd_lite cups luci-app-cupsd
     )
+    local required_feed_dirs=(
+        cups tcping v2ray-geodata luci-lib-taskd luci-app-openclash
+        luci-app-quickstart luci-app-store luci-app-homeproxy luci-app-mosdns
+        luci-app-passwall nikki luci-app-nikki
+        open-app-filter luci-app-oaf lucky luci-app-lucky luci-app-easytier
+    )
+    local custom_feed_sources=()
+    local missing_feed_dirs=()
+    local source_entry
+    local repo_label
+    local repo_url
+    local repo_branch
+    local repo_packages
+    local repo_package_array=()
 
-    # 2. 准备本地 feed 目录
+    if [ ! -d "$fullconenat_nft_dir" ]; then
+        base_custom_feed_packages+=(fullconenat-nft)
+    fi
+    if [ ! -d "$fullconenat_dir" ]; then
+        base_custom_feed_packages+=(fullconenat)
+    fi
+
+    custom_feed_sources=(
+        "kenzok8/small-package|https://github.com/kenzok8/small-package.git||${base_custom_feed_packages[*]}"
+        "sbwml/luci-app-mosdns|https://github.com/sbwml/luci-app-mosdns.git|v5|mosdns luci-app-mosdns"
+        "Openwrt-Passwall/openwrt-passwall|https://github.com/Openwrt-Passwall/openwrt-passwall.git|main|luci-app-passwall"
+        "nikkinikki-org/OpenWrt-nikki|https://github.com/nikkinikki-org/OpenWrt-nikki.git|main|nikki luci-app-nikki"
+    )
+
+    feeds_path=$(get_feeds_path)
+    custom_feed_name=$(get_custom_feed_name)
+    custom_feed_dir=$(get_custom_feed_source_dir)
+    custom_feed_worktree_dir=$(get_custom_feed_worktree_dir)
+
     if [ -d "$custom_feed_dir" ]; then
         echo "清理旧的自定义 feed 目录..."
         rm -rf "$custom_feed_dir"
     fi
     mkdir -p "$custom_feed_dir"
 
-    # 3. 稀疏克隆拉取骨架
-    echo "正在使用稀疏克隆(sparse-checkout)拉取 $feed_name 仓库骨架..."
-    rm -rf "$tmp_dir"
-    if ! git clone --depth 1 --filter=blob:none --sparse "$repo_url" "$tmp_dir"; then
-        echo "错误：从 $repo_url 拉取仓库骨架失败" >&2
+    for source_entry in "${custom_feed_sources[@]}"; do
+        IFS='|' read -r repo_label repo_url repo_branch repo_packages <<< "$source_entry"
+        read -r -a repo_package_array <<< "$repo_packages"
+
+        if ! sync_sparse_packages_to_feed_dir "$repo_url" "$repo_branch" "$custom_feed_dir" "$repo_label" "${repo_package_array[@]}"; then
+            rm -rf "$custom_feed_dir"
+            return 1
+        fi
+    done
+
+    register_local_feed_source "$custom_feed_dir" "$feeds_path"
+
+    echo "正在更新 $custom_feed_name 本地 feed 索引..."
+    ./scripts/feeds update "$custom_feed_name"
+
+    collect_missing_directories "$custom_feed_worktree_dir" required_feed_dirs missing_feed_dirs
+
+    if [ ${#missing_feed_dirs[@]} -ne 0 ]; then
+        printf '错误：%s 本地 feed 未生成以下仓库依赖路径：\n' "$custom_feed_name" >&2
+        printf '  - %s\n' "${missing_feed_dirs[@]}" >&2
         return 1
     fi
 
-    # 4. 告诉 Git 只拉取数组中的目录
-    echo "配置需要下载的包列表并拉取文件..."
-    git -C "$tmp_dir" sparse-checkout set "${packages[@]}"
+    echo "$custom_feed_name 指定包处理完成并已成功加载到 feeds 体系中！"
+}
 
-    # 5. 将拉取到的包移入我们的 custom_feeds 目录
-    for pkg in "${packages[@]}"; do
-        if [ -d "$tmp_dir/$pkg" ]; then
-            mv "$tmp_dir/$pkg" "$custom_feed_dir/"
-        else
-            echo "  [警告] 仓库中未找到包: $pkg"
+verify_custom_feed_installed_paths() {
+    local custom_feed_name
+    local custom_feed_package_dir
+    local required_package_dirs=(
+        luci-app-adguardhome luci-app-mosdns v2ray-geodata luci-app-easytier
+        luci-app-passwall nikki luci-app-nikki
+    )
+    local missing_package_dirs=()
+
+    custom_feed_name=$(get_custom_feed_name)
+    custom_feed_package_dir=$(get_custom_feed_package_dir)
+
+    collect_missing_directories "$custom_feed_package_dir" required_package_dirs missing_package_dirs
+
+    if [ ${#missing_package_dirs[@]} -ne 0 ]; then
+        printf '错误：%s 安装后缺少以下仓库依赖路径：\n' "$custom_feed_name" >&2
+        printf '  - %s\n' "${missing_package_dirs[@]}" >&2
+        return 1
+    fi
+}
+
+collect_missing_directories() {
+    local base_dir="$1"
+    local -n required_dirs_ref="$2"
+    local -n missing_dirs_ref="$3"
+    local dir_name
+
+    for dir_name in "${required_dirs_ref[@]}"; do
+        if [ ! -d "$base_dir/$dir_name" ]; then
+            missing_dirs_ref+=("${base_dir#$BUILD_DIR/}/$dir_name")
         fi
     done
-
-    for only_update_pkg in fullconenat-nft fullconenat; do
-        if [ -d "$tmp_dir/$only_update_pkg" ]; then
-            mv "$tmp_dir/$only_update_pkg" "$custom_feed_dir/"
-        else
-            echo "  [警告] 仓库中未找到仅索引包: $only_update_pkg"
-        fi
-    done
-
-    # 6. 清理临时克隆目录
-    rm -rf "$tmp_dir"
-
-    # 7. 将本地目录作为 src-link 写入 feeds.conf.default
-    sed -i "/$feed_name/d" feeds.conf.default
-    echo "src-link $feed_name $custom_feed_dir" >> feeds.conf.default
-    echo "已将 $feed_name 作为本地源 (src-link) 添加到 feeds.conf.default"
-
-    # 8. 更新 feed 索引并安装数组中的包
-    echo "正在 update 和 install feeds..."
-    ./scripts/feeds update "$feed_name"
-
-    # 这里的 "${packages[@]}" 会自动展开成包名列表，等同于 install -p small8 pkg1 pkg2...
-    ./scripts/feeds install -p "$feed_name" "${packages[@]}"
-
-    echo "$feed_name 指定包处理完成并已成功加载到 feeds 体系中！"
-}
-
-install_passwall() {
-    echo "正在从官方仓库安装 luci-app-passwall..."
-    ./scripts/feeds install -p passwall -f luci-app-passwall
-}
-
-install_nikki() {
-    echo "正在从官方仓库安装 nikki..."
-    ./scripts/feeds install -p nikki -f nikki luci-app-nikki
-}
-
-install_fullconenat() {
-    if [ ! -d $BUILD_DIR/package/network/utils/fullconenat-nft ]; then
-        ./scripts/feeds install -p small8 -f fullconenat-nft
-    fi
-    if [ ! -d $BUILD_DIR/package/network/utils/fullconenat ]; then
-        ./scripts/feeds install -p small8 -f fullconenat
-    fi
 }
 
 check_default_settings() {
@@ -209,7 +302,7 @@ add_ax6600_led() {
 
 update_homeproxy() {
     local repo_url="https://github.com/immortalwrt/homeproxy.git"
-    local target_dir="$BUILD_DIR/feeds/small8/luci-app-homeproxy"
+    local target_dir="$(get_custom_feed_worktree_dir)/luci-app-homeproxy"
 
     if [ -d "$target_dir" ]; then
         echo "正在更新 homeproxy..."
@@ -233,7 +326,7 @@ add_timecontrol() {
 }
 
 update_adguardhome() {
-    local adguardhome_dir="$BUILD_DIR/package/feeds/small8/luci-app-adguardhome"
+    local adguardhome_dir="$(get_custom_feed_package_dir)/luci-app-adguardhome"
     local repo_url="https://github.com/ZqinKing/luci-app-adguardhome.git"
 
     echo "正在更新 luci-app-adguardhome..."
@@ -247,9 +340,9 @@ update_adguardhome() {
 
 update_lucky() {
     local lucky_repo_url="https://github.com/gdy666/luci-app-lucky.git"
-    local target_small8_dir="$BUILD_DIR/feeds/small8"
-    local lucky_dir="$target_small8_dir/lucky"
-    local luci_app_lucky_dir="$target_small8_dir/luci-app-lucky"
+    local target_custom_feed_dir="$(get_custom_feed_worktree_dir)"
+    local lucky_dir="$target_custom_feed_dir/lucky"
+    local luci_app_lucky_dir="$target_custom_feed_dir/luci-app-lucky"
 
     if [ ! -d "$lucky_dir" ] || [ ! -d "$luci_app_lucky_dir" ]; then
         echo "Warning: $lucky_dir 或 $luci_app_lucky_dir 不存在，跳过 lucky 源代码更新。" >&2
@@ -283,7 +376,7 @@ update_lucky() {
         echo "luci-app-lucky 和 lucky 源代码更新完成。"
     fi
 
-    local lucky_conf="$BUILD_DIR/feeds/small8/lucky/files/luckyuci"
+    local lucky_conf="$(get_custom_feed_worktree_dir)/lucky/files/luckyuci"
     if [ -f "$lucky_conf" ]; then
         sed -i "s/option enabled '1'/option enabled '0'/g" "$lucky_conf"
         sed -i "s/option logger '1'/option logger '0'/g" "$lucky_conf"
@@ -296,7 +389,7 @@ update_lucky() {
         return 0
     fi
 
-    local makefile_path="$BUILD_DIR/feeds/small8/lucky/Makefile"
+    local makefile_path="$(get_custom_feed_worktree_dir)/lucky/Makefile"
     if [ ! -f "$makefile_path" ]; then
         echo "Warning: lucky Makefile not found. Skipping." >&2
         return 0
@@ -454,7 +547,7 @@ add_quickfile() {
 }
 
 update_argon() {
-    local repo_url="https://github.com/jerrykuku/luci-theme-argon.git"
+    local repo_url="https://github.com/ZqinKing/luci-theme-argon.git"
     local dst_theme_path="$BUILD_DIR/feeds/luci/themes/luci-theme-argon"
     local tmp_dir
     tmp_dir=$(mktemp -d)
@@ -472,69 +565,6 @@ update_argon() {
     mv "$tmp_dir" "$dst_theme_path"
 
     echo "luci-theme-argon 更新完成"
-}
-
-update_argon_config() {
-    local repo_url="https://github.com/jerrykuku/luci-app-argon-config.git"
-    local dst_app_path="$BUILD_DIR/feeds/luci/applications/luci-app-argon-config"
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-
-    echo "正在更新 argon 配置应用..."
-
-    if ! git clone --depth 1 "$repo_url" "$tmp_dir"; then
-        echo "错误：从 $repo_url 克隆 luci-app-argon-config 仓库失败" >&2
-        rm -rf "$tmp_dir"
-        exit 1
-    fi
-
-    rm -rf "$dst_app_path"
-    rm -rf "$tmp_dir/.git"
-    mv "$tmp_dir" "$dst_app_path"
-
-    echo "luci-app-argon-config 更新完成"
-}
-
-update_aurora() {
-    local repo_url="https://github.com/eamonxg/luci-theme-aurora.git"
-    local dst_theme_path="$BUILD_DIR/feeds/luci/themes/luci-theme-aurora"
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-
-    echo "正在更新 aurora 主题..."
-
-    if ! git clone --depth 1 "$repo_url" "$tmp_dir"; then
-        echo "错误：从 $repo_url 克隆 aurora 主题仓库失败" >&2
-        rm -rf "$tmp_dir"
-        exit 1
-    fi
-
-    rm -rf "$dst_theme_path"
-    rm -rf "$tmp_dir/.git"
-    mv "$tmp_dir" "$dst_theme_path"
-
-    echo "luci-theme-aurora 更新完成"
-}
-
-update_aurora_config() {
-    local repo_url="https://github.com/eamonxg/luci-app-aurora-config.git"
-    local dst_app_path="$BUILD_DIR/feeds/luci/applications/luci-app-aurora-config"
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-
-    echo "正在更新 aurora 配置应用..."
-
-    if ! git clone --depth 1 "$repo_url" "$tmp_dir"; then
-        echo "错误：从 $repo_url 克隆 luci-app-aurora-config 仓库失败" >&2
-        rm -rf "$tmp_dir"
-        exit 1
-    fi
-
-    rm -rf "$dst_app_path"
-    rm -rf "$tmp_dir/.git"
-    mv "$tmp_dir" "$dst_app_path"
-
-    echo "luci-app-aurora-config 更新完成"
 }
 
 remove_attendedsysupgrade() {

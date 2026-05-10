@@ -24,7 +24,7 @@ FEEDS_CONF="feeds.conf.default"
 GOLANG_REPO="https://github.com/sbwml/packages_lang_golang"
 GOLANG_BRANCH="26.x"
 THEME_SET="argon"
-LAN_ADDR="10.0.0.1"
+LAN_ADDR="192.168.1.1"
 
 SCRIPT_DIR=$(cd $(dirname $0) && pwd)
 BASE_PATH=${BASE_PATH:-$SCRIPT_DIR}
@@ -44,8 +44,7 @@ main() {
     update_feeds
     remove_unwanted_packages
     remove_tweaked_packages
-    install_small8
-    install_fullconenat
+    install_custom_feed
     update_homeproxy
     fix_default_set
     fix_miniupnpd
@@ -83,9 +82,6 @@ main() {
     set_nginx_default_config
     update_uwsgi_limit_as
     update_argon
-    update_argon_config
-    update_aurora
-    update_aurora_config
     update_nginx_ubus_module
     check_default_settings
     install_opkg_distfeeds
@@ -93,15 +89,16 @@ main() {
     remove_attendedsysupgrade
     fix_kconfig_recursive_dependency
     install_feeds
+    verify_custom_feed_installed_paths
     docker_stack_sync_nftables_compat "$BUILD_DIR" "0"
     fix_cups_libcups_avahi_depends
     fix_easytier_lua
-    fix_netfilter_kmod_clash
     update_adguardhome
     update_script_priority
     update_geoip
     fix_openssl_ktls
     fix_opkg_check
+    fix_netfilter_kmod_clash
     fix_quectel_cm
     install_pbr_cmcc
     fix_pbr_ip_forward
