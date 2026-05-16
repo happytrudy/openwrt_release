@@ -59,9 +59,9 @@ key: ${{ matrix.os }}-${{ matrix.model }}-${{ hashFiles('**/repo_flag') }}-${{ e
 ### 第二步：验证清理结果
 
 清理完成后，检查：
-- [Actions Caches](https://github.com/ZqinKing/wrt_release/actions/caches) - 应该为空或很少
-- [Releases](https://github.com/ZqinKing/wrt_release/releases) - 应该为空
-- [Workflow Runs](https://github.com/ZqinKing/wrt_release/actions) - 只保留最近的清理记录
+- [Actions Caches](https://github.com/happytrudy/wrt_release/actions/caches) - 应该为空或很少
+- [Releases](https://github.com/happytrudy/wrt_release/releases) - 应该为空
+- [Workflow Runs](https://github.com/happytrudy/wrt_release/actions) - 只保留最近的清理记录
 
 ### 第三步：重新构建
 
@@ -244,4 +244,4 @@ T3: 两个设备各自读取自己的缓存
 ---
 
 **最后更新**: 2026-04-09  
-**维护者**: ZqinKing
+**维护者**: happytrudy
