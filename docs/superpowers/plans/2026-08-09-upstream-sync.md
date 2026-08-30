@@ -192,11 +192,11 @@ for config in [
     "wrt_core/deconfig/jdcloud_ipq60xx_libwrt.config",
     "wrt_core/deconfig/link_nn6000v2_immwrt.config",
 ]:
-    require(config, "CONFIG_PACKAGE_luci-app-openclash=y")
+    require(config, "CONFIG_PACKAGE_luci-app-openclash=n")
     require(config, "CONFIG_PACKAGE_luci-app-homeproxy=y")
 
-require("wrt_core/deconfig/jdcloud_ipq60xx_immwrt.config", "CONFIG_PACKAGE_luci-app-passwall2=y")
-require("wrt_core/deconfig/jdcloud_ipq60xx_immwrt.config", "CONFIG_PACKAGE_luci-app-ssr-plus=y")
+require("wrt_core/deconfig/jdcloud_ipq60xx_immwrt.config", "CONFIG_PACKAGE_luci-app-passwall2=n")
+require("wrt_core/deconfig/jdcloud_ipq60xx_immwrt.config", "CONFIG_PACKAGE_luci-app-ssr-plus=n")
 require("wrt_core/deconfig/jdcloud_ipq60xx_libwrt.config", "luci-app-dockerman luci-i18n-dockerman-zh-cn")
 
 require("wrt_core/modules/package_source_updates.sh", "https://github.com/jerrykuku/luci-theme-argon.git")
@@ -329,15 +329,15 @@ For both IPQ60xx configs, remove `luci-app-cupsd` from per-device package string
 CONFIG_PACKAGE_luci-app-partexp=y
 CONFIG_PACKAGE_luci-app-statistics=y
 CONFIG_PACKAGE_luci-app-wifischedule=y
-CONFIG_PACKAGE_luci-app-openclash=y
+CONFIG_PACKAGE_luci-app-openclash=n
 CONFIG_PACKAGE_luci-app-homeproxy=y
 ```
 
 Additionally append to `jdcloud_ipq60xx_immwrt.config`:
 
 ```text
-CONFIG_PACKAGE_luci-app-passwall2=y
-CONFIG_PACKAGE_luci-app-ssr-plus=y
+CONFIG_PACKAGE_luci-app-passwall2=n
+CONFIG_PACKAGE_luci-app-ssr-plus=n
 CONFIG_PACKAGE_luci-app-sqm=n
 CONFIG_PACKAGE_luci-app-vlmcsd=n
 ```

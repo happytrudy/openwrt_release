@@ -68,16 +68,16 @@ for config in [
     "wrt_core/deconfig/jdcloud_ipq60xx_libwrt.config",
     "wrt_core/deconfig/link_nn6000v2_immwrt.config",
 ]:
-    require(config, "CONFIG_PACKAGE_luci-app-openclash=y")
+    require(config, "CONFIG_PACKAGE_luci-app-openclash=n")
     require(config, "CONFIG_PACKAGE_luci-app-homeproxy=y")
 
 require(
     "wrt_core/deconfig/jdcloud_ipq60xx_immwrt.config",
-    "CONFIG_PACKAGE_luci-app-passwall2=y",
+    "CONFIG_PACKAGE_luci-app-passwall2=n",
 )
 require(
     "wrt_core/deconfig/jdcloud_ipq60xx_immwrt.config",
-    "CONFIG_PACKAGE_luci-app-ssr-plus=y",
+    "CONFIG_PACKAGE_luci-app-ssr-plus=n",
 )
 require(
     "wrt_core/deconfig/jdcloud_ipq60xx_libwrt.config",
