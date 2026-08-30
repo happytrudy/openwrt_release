@@ -53,8 +53,8 @@ for setting in [
     "CONFIG_PACKAGE_luci-app-wol=n",
     "CONFIG_PACKAGE_luci-theme-argon=y",
     "CONFIG_PACKAGE_luci-app-argon-config=y",
-    "CONFIG_PACKAGE_luci-theme-aurora=y",
-    "CONFIG_PACKAGE_luci-app-aurora-config=y",
+    "CONFIG_PACKAGE_luci-theme-aurora=n",
+    "CONFIG_PACKAGE_luci-app-aurora-config=n",
 ]:
     require(base, setting)
 

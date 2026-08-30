@@ -179,8 +179,8 @@ for setting in [
     "CONFIG_PACKAGE_luci-app-wol=n",
     "CONFIG_PACKAGE_luci-theme-argon=y",
     "CONFIG_PACKAGE_luci-app-argon-config=y",
-    "CONFIG_PACKAGE_luci-theme-aurora=y",
-    "CONFIG_PACKAGE_luci-app-aurora-config=y",
+    "CONFIG_PACKAGE_luci-theme-aurora=n",
+    "CONFIG_PACKAGE_luci-app-aurora-config=n",
 ]:
     require(base, setting)
 
@@ -317,8 +317,8 @@ CONFIG_PACKAGE_luci-app-pbr=n
 CONFIG_PACKAGE_luci-app-wol=n
 CONFIG_PACKAGE_luci-theme-argon=y
 CONFIG_PACKAGE_luci-app-argon-config=y
-CONFIG_PACKAGE_luci-theme-aurora=y
-CONFIG_PACKAGE_luci-app-aurora-config=y
+CONFIG_PACKAGE_luci-theme-aurora=n
+CONFIG_PACKAGE_luci-app-aurora-config=n
 ```
 
 - [ ] **Step 2: Restore downstream device selections and remove CUPS from every device**

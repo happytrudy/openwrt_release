@@ -17,7 +17,3 @@ if uci show dropbear | grep -q "DirectInterface"; then
     uci commit dropbear
     /etc/init.d/dropbear restart
 fi
-
-# 设置默认主题为 Argon
-uci set luci.main.options.theme='argon' 2>/dev/null || true
-uci commit luci 2>/dev/null || true
