@@ -48,40 +48,32 @@ update_homeproxy() {
     if [ -d "$target_dir" ]; then
         echo "正在更新 homeproxy..."
         rm -rf "$target_dir"
+        
+        # 1. 临时创建一个干净的目录用来接收稀疏检出的内容
+        local tmp_dir="${target_dir}_tmp"
+        rm -rf "$tmp_dir" && mkdir -p "$tmp_dir"
+        cd "$tmp_dir" || exit 1
+        
+        # 2. 初始化本地空仓库并启用稀疏检出
+        git init >/dev/null
+        git sparse-checkout set --cone
+        git sparse-checkout set luci-app-homeproxy
+        
+        # 3. 严格套用你原脚本的 git_retry 容错与退出逻辑
+        if ! git_retry remote add -f origin "$repo_url" || ! git_retry pull --depth 1 origin main; then
+            echo "错误：从 $repo_url 克隆 homeproxy 仓库失败" >&2
+            cd - >/dev/null
+            rm -rf "$tmp_dir"
+            exit 1
+        fi
+        
+        # 4. 将提取出的目标子目录移动到标准的 target_dir 位置，并清理痕迹
+        cd - >/dev/null
+        mv "$tmp_dir/luci-app-homeproxy" "$target_dir"
+        rm -rf "$tmp_dir"
     fi
-
-    # 1. 创建并进入目标目录
-    mkdir -p "$target_dir"
-    cd "$target_dir" || exit 1
-
-    # 2. 初始化一个空的本地仓库
-    git init
-
-    # 3. 配置稀疏检出模式（锥形模式 cone 效率更高）
-    git sparse-checkout set --cone
-
-    # 4. 将远程仓库添加为 origin 并允许重试逻辑
-    # 注意：这里直接套用你原本定义的 git_retry 函数来拉取远程连接信息
-    if ! git_retry remote add -f origin "$repo_url"; then
-        echo "错误：无法连接到远程仓库 $repo_url" >&2
-        exit 1
-    fi
-
-    # 5. 指定只检出远程的 luci-app-homeproxy 文件夹
-    git sparse-checkout set luci-app-homeproxy
-
-    # 6. 拉取最新的一次提交历史（main分支）
-    if ! git_retry pull --depth 1 origin main; then
-        echo "错误：从 $repo_url 克隆 homeproxy 目录失败" >&2
-        exit 1
-    fi
-
-    # 7. 关键变通：将下载下来的子目录内容提取到 $target_dir 根目录下，并清理 Git 缓存
-    # 这样做是为了配合 OpenWrt 的编译机制，让 Makefile 暴露在 $target_dir 的根目录中
-    mv luci-app-homeproxy/* . 2>/dev/null
-    mv luci-app-homeproxy/.* . 2>/dev/null 
-    rm -rf luci-app-homeproxy .git
 }
+
 
 
 
