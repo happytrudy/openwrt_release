@@ -203,7 +203,7 @@ require("wrt_core/modules/package_source_updates.sh", "https://github.com/jerryk
 require("wrt_core/modules/package_source_updates.sh", "https://github.com/jerrykuku/luci-app-argon-config.git")
 require("wrt_core/modules/package_source_updates.sh", "https://github.com/eamonxg/luci-theme-aurora.git")
 require("wrt_core/modules/package_source_updates.sh", "https://github.com/eamonxg/luci-app-aurora-config.git")
-require("wrt_core/update.sh", 'LAN_ADDR="10.0.0.1"')
+require("wrt_core/update.sh", 'LAN_ADDR="192.168.2.1"')
 for call in ["update_argon_config", "update_aurora", "update_aurora_config"]:
     require("wrt_core/update.sh", call)
 
@@ -381,7 +381,7 @@ Define `replace_luci_source NAME REPOSITORY DESTINATION` once in the same module
 Set and call these exact values in `wrt_core/update.sh`:
 
 ```bash
-LAN_ADDR="10.0.0.1"
+LAN_ADDR="192.168.2.1"
 
 update_argon
 update_argon_config
@@ -544,7 +544,7 @@ Use the downstream tag format:
 tag_name: ${{ inputs.model }}_${{ env.BUILD_DATE }}
 ```
 
-Keep the upstream source, kernel, KMOD archive, and plugin details in `release_body.txt`, but set the advertised LAN address to `10.0.0.1`. After publishing, add:
+Keep the upstream source, kernel, KMOD archive, and plugin details in `release_body.txt`, but set the advertised LAN address to `192.168.2.1`. After publishing, add:
 
 ```yaml
       - name: Cleanup Old Releases

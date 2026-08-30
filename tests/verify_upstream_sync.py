@@ -100,7 +100,7 @@ require(
     "wrt_core/modules/package_source_updates.sh",
     "https://github.com/eamonxg/luci-app-aurora-config.git",
 )
-require("wrt_core/update.sh", 'LAN_ADDR="10.0.0.1"')
+require("wrt_core/update.sh", 'LAN_ADDR="192.168.2.1"')
 for call in ["update_argon_config", "update_aurora", "update_aurora_config"]:
     require("wrt_core/update.sh", call)
 
