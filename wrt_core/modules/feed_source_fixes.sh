@@ -42,18 +42,47 @@ remove_unwanted_packages() {
 
 
 update_homeproxy() {
-    local repo_url="https://github.com/immortalwrt/homeproxy.git"
+    local repo_url="https://github.com/VIKINGYFY/packages.git"
     local target_dir="$(get_custom_feed_worktree_dir)/luci-app-homeproxy"
 
     if [ -d "$target_dir" ]; then
         echo "正在更新 homeproxy..."
         rm -rf "$target_dir"
-        if ! git_retry clone --depth 1 "$repo_url" "$target_dir"; then
-            echo "错误：从 $repo_url 克隆 homeproxy 仓库失败" >&2
-            exit 1
-        fi
     fi
+
+    # 1. 创建并进入目标目录
+    mkdir -p "$target_dir"
+    cd "$target_dir" || exit 1
+
+    # 2. 初始化一个空的本地仓库
+    git init
+
+    # 3. 配置稀疏检出模式（锥形模式 cone 效率更高）
+    git sparse-checkout set --cone
+
+    # 4. 将远程仓库添加为 origin 并允许重试逻辑
+    # 注意：这里直接套用你原本定义的 git_retry 函数来拉取远程连接信息
+    if ! git_retry remote add -f origin "$repo_url"; then
+        echo "错误：无法连接到远程仓库 $repo_url" >&2
+        exit 1
+    fi
+
+    # 5. 指定只检出远程的 luci-app-homeproxy 文件夹
+    git sparse-checkout set luci-app-homeproxy
+
+    # 6. 拉取最新的一次提交历史（main分支）
+    if ! git_retry pull --depth 1 origin main; then
+        echo "错误：从 $repo_url 克隆 homeproxy 目录失败" >&2
+        exit 1
+    fi
+
+    # 7. 关键变通：将下载下来的子目录内容提取到 $target_dir 根目录下，并清理 Git 缓存
+    # 这样做是为了配合 OpenWrt 的编译机制，让 Makefile 暴露在 $target_dir 的根目录中
+    mv luci-app-homeproxy/* . 2>/dev/null
+    mv luci-app-homeproxy/.* . 2>/dev/null 
+    rm -rf luci-app-homeproxy .git
 }
+
 
 
 update_lucky() {
