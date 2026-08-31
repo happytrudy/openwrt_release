@@ -42,7 +42,7 @@ remove_unwanted_packages() {
 
 
 update_homeproxy() {
-    local repo_url="https://github.com/szwjp/homeproxy.git"
+    local repo_url="https://github.com/happytrudy/homeproxy.git"
     local target_dir="$(get_custom_feed_worktree_dir)/luci-app-homeproxy"
 
     if [ -d "$target_dir" ]; then
@@ -55,6 +55,20 @@ update_homeproxy() {
     fi
 }
 
+
+update_sing_box() {
+    local repo_url="https://github.com/happytrudy/sing-box.git"
+    local target_dir="$(get_custom_feed_worktree_dir)/sing-box"
+
+    if [ -d "$target_dir" ]; then
+        echo "正在更新 sing-box..."
+        rm -rf "$target_dir"
+        if ! git_retry clone --depth 1 "$repo_url" "$target_dir"; then
+            echo "错误：从 $repo_url 克隆 sing-box 仓库失败" >&2
+            exit 1
+        fi
+    fi
+}
 
 update_lucky() {
     local lucky_repo_url="https://github.com/gdy666/luci-app-lucky.git"
